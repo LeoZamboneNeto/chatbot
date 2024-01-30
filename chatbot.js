@@ -29,11 +29,15 @@ const services = [
 const barbers = ['Lyu', 'Paulo', 'Julio'];
 
 function displayServices(chatId) {
-  client.sendMessage(chatId, `Serviços disponíveis:`);
-  services.forEach((service, index) => {
-    client.sendMessage(chatId, `[${index + 1}] ${service.name} --- ${service.price.toFixed(2)} R$`);
-  });
+    const message = ['Serviços disponíveis:'];
+    
+    services.forEach((service, index) => {
+      message.push(`[${index + 1}] ${service.name} --- ${service.price.toFixed(2)} R$`);
+    });
+  
+    client.sendMessage(chatId, message.join('\n'));
 }
+  
 
 function displayBarbers(chatId) {
   client.sendMessage(chatId, `Escolha um barbeiro:`);
