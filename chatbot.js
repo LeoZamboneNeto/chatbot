@@ -56,13 +56,30 @@ function cancelAppointment(chatId) {
 // Variável para rastrear se a mensagem de boas-vindas já foi enviada
 let welcomeMessageSent = false;
 
+let choosingService = false;
+
 client.on('message', async (message) => {
     const chatId = message.from;
 
     if (!welcomeMessageSent) {
-        // Envia a mensagem de boas-vindas apenas na primeira interação
         client.sendMessage(chatId, 'Olá, tudo bem? Bem-vindo ao atendimento "Lyu\'s Barbearia"\n\n[1] - Agendamento\n[2] - Cancelamento.');
         welcomeMessageSent = true;
+        return;
+    }
+
+    // Se o usuário está escolhendo um serviço
+    if (choosingService) {
+        // Verifica se a mensagem é um número válido correspondente a um serviço
+        const serviceChoice = parseInt(message.body);
+        if (!isNaN(serviceChoice) && serviceChoice > 0 && serviceChoice <= services.length) {
+            const selectedService = services[serviceChoice - 1];
+            client.sendMessage(chatId, `Você selecionou: ${selectedService.name} - ${selectedService.price.toFixed(2)} R$`);
+            // Aqui você pode prosseguir com as instruções adicionais conforme necessário
+        } else {
+            client.sendMessage(chatId, 'Opção de serviço inválida. Por favor, escolha um número de serviço válido.');
+        }
+        // Reinicia o estado do chat para não estar mais escolhendo um serviço
+        choosingService = false;
         return;
     }
 
@@ -76,11 +93,13 @@ client.on('message', async (message) => {
 
     // Executa a lógica de acordo com a opção escolhida
     if (option === 1) {
-        scheduleAppointment(chatId);
+        displayServices(chatId);
+        client.sendMessage(chatId, 'Digite o número do serviço desejado:');
+        // Define o estado do chat para estar escolhendo um serviço
+        choosingService = true;
     } else if (option === 2) {
         cancelAppointment(chatId);
     } else {
-        // Se a opção não for 1 nem 2, exibe uma mensagem de erro
         client.sendMessage(chatId, 'Opção inválida. Programa encerrado.');
     }
 });
