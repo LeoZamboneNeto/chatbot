@@ -25,7 +25,11 @@ const services = [
     { name: 'Combo 2 (pai e filho)', price: 60.00 },
 ];
 
-const barbers = ['Lyu', 'Paulo', 'Julio'];
+const barbers = [
+    {name: 'Lyu'}, 
+    {name: 'Paulo'}, 
+    {name: 'Julio'}
+];
 
 function displayServices(chatId) {
     const message = ['Serviços disponíveis:'];
@@ -38,10 +42,12 @@ function displayServices(chatId) {
 }
 
 function displayBarbers(chatId) {
-    client.sendMessage(chatId, `Escolha um barbeiro:`);
+    const message = ['Escolha um barbeiro:'];
+    
     barbers.forEach((barber, index) => {
-        client.sendMessage(chatId, `[${index + 1}] ${barber}`);
+        message.push(`[${index + 1}] ${barber.name}`);
     });
+    client.sendMessage(chatId, message.join('\n'));
 }
 
 function scheduleAppointment(chatId) {
@@ -55,54 +61,90 @@ function cancelAppointment(chatId) {
 
 // Variável para rastrear se a mensagem de boas-vindas já foi enviada
 let welcomeMessageSent = false;
-
 let choosingService = false;
+let choosingBarber = false;
+
+// ...
+
+function sendWelcomeMessage(chatId) {
+    client.sendMessage(chatId, 'Olá, tudo bem? Bem-vindo ao atendimento "Lyu\'s Barbearia"\n\n[1] - Agendamento\n[2] - Cancelamento.');
+}
+
+function handleServiceChoice(chatId, choice) {
+    if (!isNaN(choice) && choice > 0 && choice <= services.length) {
+        const selectedService = services[choice - 1];
+        client.sendMessage(chatId, `Você selecionou: ${selectedService.name} - ${selectedService.price.toFixed(2)} R$`);
+        // Aqui você pode prosseguir com as instruções adicionais conforme necessário
+        // client.sendMessage(chatId, 'Escolha um barbeiro:');
+        // displayBarbers(chatId);
+        choosingBarber = true;
+    } else {
+        client.sendMessage(chatId, 'Opção de serviço inválida. Por favor, escolha um número válido.');
+        resetChatState();
+    }
+    // Reinicia o estado do chat
+   // resetChatState();
+}
+
+function handleBarberChoice(chatId, choice) {
+    if (!isNaN(choice) && choice > 0 && choice <= barbers.length) {
+        const selectedBarber = barbers[choice - 1];
+        client.sendMessage(chatId, `Você escolheu o barbeiro: ${selectedBarber.name}`);
+        // Aqui você pode prosseguir com as instruções adicionais conforme necessário
+    } else {
+        client.sendMessage(chatId, 'Opção de barbeiro inválida. Por favor, escolha um número válido.');
+    }
+    // Reinicia o estado do chat
+    resetChatState();
+}
+
+function handleGeneralOption(chatId, option) {
+    if (option === 1) {
+        // O usuário escolheu agendamento, então exiba os serviços disponíveis
+        displayServices(chatId);
+        client.sendMessage(chatId, 'Digite o número do serviço desejado:');
+        //displayBarbers(chatId);
+        // Define o estado do chat para estar escolhendo um serviço
+        choosingService = true;
+    } else if (option === 2) {
+        // O usuário escolheu cancelamento, então inicie o processo de cancelamento
+        cancelAppointment(chatId);
+        // Reinicia o estado do chat
+        resetChatState();
+    } else {
+        client.sendMessage(chatId, 'Opção inválida. Programa encerrado.');
+        // Reinicia o estado do chat
+        resetChatState();
+    }
+}
+
+function resetChatState() {
+    choosingService = false;
+    choosingBarber = false;
+}
 
 client.on('message', async (message) => {
     const chatId = message.from;
 
     if (!welcomeMessageSent) {
-        client.sendMessage(chatId, 'Olá, tudo bem? Bem-vindo ao atendimento "Lyu\'s Barbearia"\n\n[1] - Agendamento\n[2] - Cancelamento.');
+        sendWelcomeMessage(chatId);
         welcomeMessageSent = true;
         return;
     }
 
-    // Se o usuário está escolhendo um serviço
-    if (choosingService) {
-        // Verifica se a mensagem é um número válido correspondente a um serviço
-        const serviceChoice = parseInt(message.body);
-        if (!isNaN(serviceChoice) && serviceChoice > 0 && serviceChoice <= services.length) {
-            const selectedService = services[serviceChoice - 1];
-            client.sendMessage(chatId, `Você selecionou: ${selectedService.name} - ${selectedService.price.toFixed(2)} R$`);
-            // Aqui você pode prosseguir com as instruções adicionais conforme necessário
-        } else {
-            client.sendMessage(chatId, 'Opção de serviço inválida. Por favor, escolha um número de serviço válido.');
-        }
-        // Reinicia o estado do chat para não estar mais escolhendo um serviço
-        choosingService = false;
-        return;
-    }
+    const userInput = parseInt(message.body);
 
-    // Verifica se a mensagem é um número
-    if (isNaN(message.body)) {
-        client.sendMessage(chatId, 'Por favor, insira um número válido.');
-        return;
-    }
-
-    const option = parseInt(message.body);
-
-    // Executa a lógica de acordo com a opção escolhida
-    if (option === 1) {
-        displayServices(chatId);
-        client.sendMessage(chatId, 'Digite o número do serviço desejado:');
-        // Define o estado do chat para estar escolhendo um serviço
-        choosingService = true;
-    } else if (option === 2) {
-        cancelAppointment(chatId);
+    if (choosingService && !choosingBarber) {
+        handleServiceChoice(chatId, userInput);
+    } else if (choosingBarber) {
+        handleBarberChoice(chatId, userInput);
     } else {
-        client.sendMessage(chatId, 'Opção inválida. Programa encerrado.');
+        handleGeneralOption(chatId, userInput);
     }
 });
+
+
+
 
 client.on('qr', (qr) => {
     console.log('QR Code gerado!');
